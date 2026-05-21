@@ -1948,13 +1948,13 @@ async function fetchBTCOnly() {
 function handleConnect() {
   const key = document.getElementById('api-key-input').value.trim();
   if (!key) {
-    document.getElementById('settings-hint').textContent = '⚠ Please paste your Finnhub API key first. Get a free one at finnhub.io — takes 30 seconds.';
+    document.getElementById('last-update').textContent = '⚠ Enter Finnhub key first';
     return;
   }
   finnhubKey = key;
   document.getElementById('connect-btn').textContent = 'Reconnect';
   document.getElementById('connect-btn').classList.add('secondary');
-  document.getElementById('settings-hint').textContent = 'Connecting… fetching all ' + Object.keys(FINNHUB_MAP).length + ' assets + BTC. First load takes ~5 seconds.';
+  document.getElementById('last-update').textContent = 'Connecting…';
 
   if (fetchInterval) clearInterval(fetchInterval);
   fetchAllPrices();
@@ -1972,8 +1972,6 @@ function updateModeBar() {
     badge.textContent = '● LIVE';
     badge.classList.add('live');
     update.textContent = 'Updated ' + (lastFetchTime ? lastFetchTime.toLocaleTimeString() : '—');
-    document.getElementById('settings-hint').textContent =
-      'Auto-refreshes every 30 seconds · ' + Object.keys(liveData).length + ' assets live · BTC via CoinGecko';
   }
 
   const open = isMarketOpen();
