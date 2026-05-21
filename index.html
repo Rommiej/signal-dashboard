@@ -1,0 +1,2387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Intelligence — Political Market Monitor</title>
+<style>
+/* ─────────────────────────────────────────
+   RESET & BASE
+───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Typography — Calibri stack only */
+  --font: 'Calibri', 'Calibri Light', Candara, Segoe, sans-serif;
+
+  /* Font sizes — exactly 4 */
+  --fs-xs:   11px;   /* labels, tags, meta */
+  --fs-sm:   13px;   /* body, descriptions */
+  --fs-md:   15px;   /* subheadings, card titles */
+  --fs-lg:   22px;   /* section headings, big numbers */
+
+  /* Colours — light theme */
+  --white:      #ffffff;
+  --bg:         #f4f6f9;
+  --bg-panel:   #ffffff;
+  --border:     #e2e6ea;
+  --border-md:  #cdd2d8;
+
+  /* Text */
+  --text-primary:   #1a1d23;
+  --text-secondary: #5a6070;
+  --text-muted:     #9098a8;
+
+  /* Semantic — green UP, red DOWN only */
+  --up:         #1a9e5c;
+  --up-bg:      #eaf7f0;
+  --down:       #e03535;
+  --down-bg:    #fdeaea;
+
+  /* Signal colours — NOT red/green to avoid confusion */
+  --signal-high:    #1565c0;   /* blue — high confidence */
+  --signal-high-bg: #e3f0ff;
+  --signal-med:     #e07b00;   /* amber — medium */
+  --signal-med-bg:  #fff4e0;
+  --signal-low:     #9098a8;   /* grey — low / neutral */
+  --signal-low-bg:  #f4f6f9;
+
+  --accent:      #1565c0;
+  --accent-light:#e3f0ff;
+
+  /* Spacing */
+  --gap: 16px;
+  --radius: 8px;
+  --card-pad: 20px;
+}
+
+html { font-size: 14px; }
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ─────────────────────────────────────────
+   SCROLLBAR
+───────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+
+/* ─────────────────────────────────────────
+   TOP NAV
+───────────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: 52px;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 24px;
+  gap: 24px;
+}
+
+.nav-brand {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.nav-brand-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--up);
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+}
+
+.nav-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  border-left: 1px solid var(--border);
+  padding-left: 24px;
+}
+
+.nav-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 20px;
+}
+
+.nav-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.status-dot.live { background: var(--up); animation: blink 1.5s infinite; }
+.status-dot.warn { background: var(--signal-med); }
+
+.nav-time {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: var(--bg);
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+/* ─────────────────────────────────────────
+   TICKER BAR
+───────────────────────────────────────── */
+.ticker-bar {
+  position: fixed;
+  top: 52px;
+  left: 0; right: 0;
+  z-index: 190;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  height: 32px;
+  overflow: hidden;
+  display: flex; align-items: center;
+}
+
+.ticker-track {
+  display: flex; align-items: center;
+  animation: tickScroll 60s linear infinite;
+  white-space: nowrap;
+}
+
+@keyframes tickScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.tick-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 20px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  border-right: 1px solid var(--border);
+}
+
+.tick-item .up { color: var(--up); }
+.tick-item .dn { color: var(--down); }
+
+/* ─────────────────────────────────────────
+   MAIN LAYOUT
+───────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 340px 1fr 300px;
+  grid-template-rows: auto auto auto auto;
+  gap: var(--gap);
+  padding: var(--gap);
+  padding-top: 140px;
+  max-width: 1560px;
+  margin: 0 auto;
+}
+
+/* ─────────────────────────────────────────
+   CARD / PANEL BASE
+───────────────────────────────────────── */
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.card-head {
+  padding: 14px var(--card-pad);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.card-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.card-badge {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.card-body {
+  padding: var(--card-pad);
+}
+
+/* ─────────────────────────────────────────
+   COLUMN SPANNING
+───────────────────────────────────────── */
+.col-left   { grid-column: 1; }
+.col-center { grid-column: 2; }
+.col-right  { grid-column: 3; }
+.col-full   { grid-column: 1 / 4; }
+.col-center-right { grid-column: 2 / 4; }
+.row-span-2 { grid-row: span 2; }
+
+/* ─────────────────────────────────────────
+   SIGNAL FEED
+───────────────────────────────────────── */
+.feed-list {
+  overflow-y: auto;
+  max-height: 580px;
+}
+
+.feed-item {
+  padding: 14px var(--card-pad);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.feed-item:hover { background: var(--bg); }
+.feed-item.active { background: var(--accent-light); border-left-color: var(--accent); }
+.feed-item.escalation.active { border-left-color: var(--signal-high); }
+.feed-item.deescalation.active { border-left-color: var(--up); }
+
+.feed-meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+}
+
+.feed-source {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.feed-actor {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.feed-time {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.feed-score-pill {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.feed-score-pill.high { background: var(--signal-high-bg); color: var(--signal-high); }
+.feed-score-pill.med  { background: var(--signal-med-bg);  color: var(--signal-med);  }
+.feed-score-pill.low  { background: var(--signal-low-bg);  color: var(--signal-low);  }
+
+.feed-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.feed-tags {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+
+.tag {
+  font-size: var(--fs-xs);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--bg);
+}
+
+.tag.blue   { border-color: #aac8ef; color: var(--signal-high); background: var(--signal-high-bg); }
+.tag.green  { border-color: #a8dfc2; color: var(--up);          background: var(--up-bg);          }
+.tag.amber  { border-color: #f5cda0; color: var(--signal-med);  background: var(--signal-med-bg);  }
+
+/* ─────────────────────────────────────────
+   SIGNAL ANALYSIS
+───────────────────────────────────────── */
+.composite-row {
+  display: flex; align-items: center; gap: 20px;
+  padding: var(--card-pad);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.composite-score-num {
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 80px;
+}
+
+.composite-right { flex: 1; }
+
+.composite-direction {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.composite-desc {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.score-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1px; background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.score-cell {
+  background: var(--white);
+  padding: 14px var(--card-pad);
+}
+
+.score-cell-label {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.score-cell-val {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.bar-track {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* warmth gradient */
+.warmth-row {
+  padding: 14px var(--card-pad);
+  border-bottom: 1px solid var(--border);
+}
+
+.warmth-label-row {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.warmth-stages {
+  display: flex; gap: 3px; margin-bottom: 6px;
+}
+
+.warmth-stage {
+  flex: 1; padding: 6px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  background: var(--bg);
+  transition: all 0.3s;
+}
+
+.warmth-stage.active-stage {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--white);
+  font-weight: 700;
+}
+
+.warmth-stage.active-up {
+  background: var(--up);
+  border-color: var(--up);
+  color: var(--white);
+  font-weight: 700;
+}
+
+.warmth-stage.active-warn {
+  background: var(--signal-med);
+  border-color: var(--signal-med);
+  color: var(--white);
+  font-weight: 700;
+}
+
+.warmth-desc {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.lang-rows { padding: var(--card-pad); }
+
+.lang-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.lang-row:last-child { border-bottom: none; }
+
+.lang-name {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.lang-bar-wrap { flex: 1; }
+
+.lang-val {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  width: 36px;
+  text-align: right;
+}
+
+/* ─────────────────────────────────────────
+   TRADE RECOMMENDATIONS
+───────────────────────────────────────── */
+.trade-cards-list {
+  display: flex; flex-direction: column; gap: var(--gap);
+  padding: var(--card-pad);
+}
+
+.trade-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.trade-card-head {
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.trade-type-badge {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-long  { background: var(--up-bg);          color: var(--up);           border: 1px solid #a8dfc2; }
+.badge-short { background: var(--down-bg);         color: var(--down);         border: 1px solid #f5b0b0; }
+.badge-vol   { background: var(--signal-med-bg);   color: var(--signal-med);   border: 1px solid #f5cda0; }
+.badge-watch { background: var(--signal-low-bg);   color: var(--signal-low);   border: 1px solid var(--border); }
+
+.trade-instrument {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.trade-conf-wrap { text-align: right; }
+
+.trade-conf-num {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.trade-conf-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.trade-rationale {
+  padding: 12px 16px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  border-bottom: 1px solid var(--border);
+}
+
+.trade-rationale strong { color: var(--text-primary); font-weight: 700; }
+
+.trade-targets {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid var(--border);
+}
+
+.trade-target {
+  padding: 10px 14px;
+  border-right: 1px solid var(--border);
+}
+
+.trade-target:last-child { border-right: none; }
+
+.trade-target-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.trade-target-val {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────────
+   TRADE HISTORY
+───────────────────────────────────────── */
+.history-section {
+  padding: 0 var(--card-pad) var(--card-pad);
+}
+
+.history-section-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: var(--card-pad) 0 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.history-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-row:last-child { border-bottom: none; }
+
+.hist-indicator {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+
+.hist-indicator.win     { background: var(--up); }
+.hist-indicator.loss    { background: var(--down); }
+.hist-indicator.pending { background: var(--signal-med); }
+
+.hist-text {
+  flex: 1;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.hist-text strong { color: var(--text-primary); }
+
+.hist-return {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.hist-return.pos { color: var(--up); }
+.hist-return.neg { color: var(--down); }
+.hist-return.pend { color: var(--signal-med); }
+
+/* ─────────────────────────────────────────
+   ASSET MONITOR
+───────────────────────────────────────── */
+.asset-groups { overflow-y: auto; max-height: 700px; }
+
+.asset-group-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 8px var(--card-pad) 6px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+}
+
+.asset-row {
+  display: flex; align-items: center;
+  padding: 10px var(--card-pad);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.asset-row:hover { background: var(--bg); }
+
+.asset-ticker {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.asset-name {
+  flex: 1;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-price {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-align: right;
+  width: 76px;
+  flex-shrink: 0;
+}
+
+.asset-chg {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  width: 52px;
+  flex-shrink: 0;
+  text-align: right;
+  padding-left: 4px;
+}
+
+.asset-sig-pill {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 2px 0;
+  border-radius: 20px;
+  margin-left: 8px;
+  width: 44px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.sig-trade { background: var(--up-bg);         color: var(--up);          border: 1px solid #a8dfc2; }
+.sig-watch { background: var(--signal-med-bg);  color: var(--signal-med);  border: 1px solid #f5cda0; }
+.sig-alert { background: var(--signal-high-bg); color: var(--signal-high); border: 1px solid #aac8ef; }
+
+/* ─────────────────────────────────────────
+   VIX PANEL
+───────────────────────────────────────── */
+.vix-main {
+  display: flex; align-items: center; gap: 16px;
+  padding: var(--card-pad);
+  border-bottom: 1px solid var(--border);
+}
+
+.vix-big {
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 90px;
+}
+
+.vix-detail-right { flex: 1; }
+
+.vix-regime-label {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.vix-regime-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.vix-scale-wrap { padding: 14px var(--card-pad) 4px; }
+
+.vix-scale-bar {
+  display: flex; height: 10px; border-radius: 5px; overflow: hidden; gap: 2px;
+  margin-bottom: 4px;
+}
+
+.vix-seg { flex: 1; border-radius: 2px; }
+
+.vix-scale-labels {
+  display: flex; justify-content: space-between;
+  font-size: var(--fs-xs); color: var(--text-muted);
+  padding-bottom: 12px;
+}
+
+.vix-instruments {
+  padding: 0 var(--card-pad) var(--card-pad);
+}
+
+.vix-inst-title {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.vix-inst-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+
+.vix-inst-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--bg);
+}
+
+.vix-inst-card.rec {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.vix-inst-ticker {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.vix-inst-card.rec .vix-inst-ticker { color: var(--accent); }
+
+.vix-inst-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* ─────────────────────────────────────────
+   SIGNAL LIBRARY
+───────────────────────────────────────── */
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1px;
+  background: var(--border);
+}
+
+.lib-card {
+  background: var(--white);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.lib-card:hover { background: var(--bg); }
+
+.lib-id {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.lib-name {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  line-height: 1.4;
+  min-height: 32px;
+}
+
+.lib-channel {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.lib-stats-row {
+  display: flex; gap: 12px; margin-bottom: 8px;
+}
+
+.lib-stat { text-align: left; }
+
+.lib-stat-val {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.lib-stat-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.lib-bar-track {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.lib-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+/* ─────────────────────────────────────────
+   DISCLAIMER
+───────────────────────────────────────── */
+.disclaimer {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.disclaimer strong { color: var(--signal-med); }
+
+/* ─────────────────────────────────────────
+   SETTINGS / DATA MODE BAR
+───────────────────────────────────────── */
+.settings-bar {
+  position: fixed;
+  top: 84px;
+  left: 0; right: 0;
+  z-index: 180;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: var(--fs-xs);
+}
+.settings-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.settings-input {
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+  border: 1px solid var(--border-md);
+  border-radius: 4px;
+  padding: 4px 10px;
+  width: 240px;
+  color: var(--text-primary);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.settings-input:focus { border-color: var(--accent); background: var(--white); }
+.settings-btn {
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--white);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.settings-btn:hover { opacity: 0.85; }
+.settings-btn.secondary {
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-md);
+}
+.data-mode-badge {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid #f5cda0;
+  background: var(--signal-med-bg);
+  color: var(--signal-med);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.data-mode-badge.live {
+  border-color: #a8dfc2;
+  background: var(--up-bg);
+  color: var(--up);
+}
+.settings-divider {
+  width: 1px; height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.settings-meta { color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+.market-status { white-space: nowrap; font-weight: 600; flex-shrink: 0; }
+.settings-hint {
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fetch-spinner {
+  display: none;
+  width: 12px; height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.fetch-spinner.active { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─────────────────────────────────────────
+   MODAL
+───────────────────────────────────────── */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+  backdrop-filter: blur(3px);
+}
+
+.modal-bg.open { opacity: 1; pointer-events: all; }
+
+.modal-box {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 640px; width: 100%;
+  max-height: 85vh; overflow-y: auto;
+  transform: translateY(12px);
+  transition: transform 0.25s;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+.modal-bg.open .modal-box { transform: translateY(0); }
+
+.modal-top {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between;
+  position: sticky; top: 0; background: var(--white); z-index: 1;
+}
+
+.modal-title { font-size: var(--fs-md); font-weight: 700; }
+.modal-id { font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: 2px; }
+
+.modal-close {
+  background: none; border: none;
+  font-size: 18px; color: var(--text-muted);
+  cursor: pointer; padding: 4px 8px;
+  border-radius: 4px; transition: background 0.15s;
+}
+.modal-close:hover { background: var(--bg); }
+
+.modal-content { padding: 20px 24px; }
+
+.modal-section { margin-bottom: 18px; }
+
+.modal-section-title {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-text {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.modal-asset-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+
+.modal-asset-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--bg);
+}
+
+.modal-asset-name { font-size: var(--fs-xs); font-weight: 700; margin-bottom: 2px; }
+.modal-asset-dir  { font-size: var(--fs-xs); }
+.modal-asset-dir.up { color: var(--up); }
+.modal-asset-dir.dn { color: var(--down); }
+
+.modal-stat-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+
+.modal-stat-card {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px; background: var(--bg);
+}
+
+.modal-stat-val {
+  font-size: var(--fs-lg); font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.modal-stat-label {
+  font-size: var(--fs-xs); color: var(--text-muted);
+}
+
+.tell-item {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 8px;
+}
+
+.tell-item:last-child { border-bottom: none; }
+.tell-bullet { color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+.hist-event {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 8px;
+}
+.hist-event:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+
+<!-- ── TOP NAV ── -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-brand-dot"></div>
+    Signal Intelligence
+  </div>
+  <span class="nav-subtitle">Political Market Monitor — Trump / Inner Circle Statement Analysis</span>
+  <div class="nav-right">
+    <div class="nav-status"><div class="status-dot live"></div> Truth Social Live</div>
+    <div class="nav-status"><div class="status-dot live"></div> X / Musk Live</div>
+    <div class="nav-status"><div class="status-dot warn"></div> Pre-Market</div>
+    <div class="nav-time" id="clock">--:--:-- UTC</div>
+  </div>
+</nav>
+
+<!-- ── TICKER ── -->
+<div class="ticker-bar">
+  <div class="ticker-track" id="ticker"></div>
+</div>
+
+<!-- ── SETTINGS / DATA MODE BAR ── -->
+<div class="settings-bar">
+  <span class="data-mode-badge" id="data-mode-badge">● Loading…</span>
+  <div class="settings-divider"></div>
+  <span class="data-mode-badge" id="ai-mode-badge">● AI Ready</span>
+  <div class="settings-divider"></div>
+  <span class="settings-meta" id="last-update">Fetching prices…</span>
+  <div class="settings-divider"></div>
+  <span class="market-status" id="market-status" style="color:var(--text-muted)">○ Checking market…</span>
+</div>
+
+<!-- ── MAIN LAYOUT ── -->
+<div class="layout">
+
+  <!-- ROW 0: Post Analysis Input — full width -->
+  <div class="card col-full" id="analyse-panel">
+    <div class="card-head">
+      <span class="card-title">Post Analysis Engine</span>
+      <span class="card-badge" id="ai-status-badge">Enter Anthropic key above to activate</span>
+    </div>
+    <div style="padding:16px 20px;display:flex;gap:12px;align-items:flex-start;">
+      <div style="flex:1;">
+        <textarea id="post-input"
+          placeholder="Paste a Trump or Musk post here and press Analyse — Claude will score it, identify the signal, and generate trade recommendations in real time…"
+          style="width:100%;height:72px;font-family:var(--font);font-size:var(--fs-sm);border:1px solid var(--border-md);border-radius:4px;padding:10px 12px;resize:none;outline:none;color:var(--text-primary);background:var(--bg);line-height:1.5;"
+          onkeydown="if(event.ctrlKey&&event.key==='Enter')analysePost()"></textarea>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;">
+        <div style="display:flex;gap:8px;">
+          <select id="post-actor" style="font-family:var(--font);font-size:var(--fs-xs);border:1px solid var(--border-md);border-radius:4px;padding:5px 8px;background:var(--bg);color:var(--text-primary);outline:none;">
+            <option value="Trump">Trump</option>
+            <option value="Musk">Musk</option>
+            <option value="Navarro">Navarro</option>
+            <option value="Other">Other</option>
+          </select>
+          <select id="post-source" style="font-family:var(--font);font-size:var(--fs-xs);border:1px solid var(--border-md);border-radius:4px;padding:5px 8px;background:var(--bg);color:var(--text-primary);outline:none;">
+            <option value="Truth Social">Truth Social</option>
+            <option value="X">X / Twitter</option>
+            <option value="Press Conference">Press Conference</option>
+            <option value="Interview">Interview</option>
+          </select>
+        </div>
+        <button id="analyse-btn" onclick="analysePost()"
+          style="font-family:var(--font);font-size:var(--fs-sm);font-weight:700;background:var(--accent);color:var(--white);border:none;border-radius:4px;padding:10px 24px;cursor:pointer;transition:opacity 0.2s;"
+          >Analyse Post</button>
+        <div style="font-size:var(--fs-xs);color:var(--text-muted);text-align:center;">or Ctrl+Enter</div>
+      </div>
+      <div id="analyse-spinner" style="display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 16px;">
+        <div style="width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;"></div>
+        <div style="font-size:var(--fs-xs);color:var(--text-muted);" id="analyse-status">Analysing…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLUMN LEFT: Signal Feed -->
+  <div class="card col-left row-span-2">
+    <div class="card-head">
+      <span class="card-title">Statement Feed</span>
+      <span class="card-badge" id="feed-badge">12 signals</span>
+    </div>
+    <div class="feed-list" id="feed-list"></div>
+  </div>
+
+  <!-- COLUMN CENTER row 1: Trade Recommendations — PRIMARY PANEL -->
+  <div class="card col-center">
+    <div class="card-head">
+      <span class="card-title">Trade Recommendations</span>
+      <span class="card-badge">Research-backed · Not financial advice</span>
+    </div>
+    <div class="trade-cards-list" id="trade-cards"></div>
+    <div class="history-section">
+      <div class="history-section-label">Historical Signal Performance</div>
+      <div id="history-rows"></div>
+    </div>
+  </div>
+
+  <!-- COLUMN RIGHT: Asset Monitor -->
+  <div class="card col-right row-span-2">
+    <div class="card-head">
+      <span class="card-title">Asset Monitor</span>
+      <span class="card-badge">Signal-mapped</span>
+    </div>
+    <div class="asset-groups" id="asset-groups"></div>
+  </div>
+
+  <!-- COLUMN CENTER row 2: Language Analysis -->
+  <div class="card col-center">
+    <div class="card-head">
+      <span class="card-title">Language Analysis</span>
+      <span class="card-badge" id="analysis-ref">Signal S007</span>
+    </div>
+    <div class="composite-row">
+      <div class="composite-score-num" id="comp-num">84</div>
+      <div class="composite-right">
+        <div class="composite-direction" id="comp-dir">▲ Escalation Detected</div>
+        <div class="composite-desc" id="comp-desc">High confidence. Specific tariff threat stated. Stage 4 hostile language. Mid-session post indicates unplanned, high-conviction statement.</div>
+      </div>
+    </div>
+    <div class="score-grid" id="score-grid"></div>
+    <div class="warmth-row">
+      <div class="warmth-label-row">Counterparty Warmth Gradient</div>
+      <div class="warmth-stages" id="warmth-stages"></div>
+      <div class="warmth-desc" id="warmth-desc">Stage 4 — Open Hostility. Escalation trade window confirmed.</div>
+    </div>
+    <div class="lang-rows" id="lang-rows"></div>
+  </div>
+
+  <!-- ROW 3: VIX + Library -->
+  <div class="card col-left">
+    <div class="card-head">
+      <span class="card-title">Volatility Regime</span>
+      <span class="card-badge" id="vix-badge">VIX 24.8</span>
+    </div>
+    <div class="vix-main">
+      <div class="vix-big" id="vix-num">24.8</div>
+      <div class="vix-detail-right">
+        <div class="vix-regime-label" id="vix-regime">Elevated</div>
+        <div class="vix-regime-desc" id="vix-regime-desc">Post-Liberation Day regime. Market more sensitive to Trump statements. Monitor closely.</div>
+      </div>
+    </div>
+    <div class="vix-scale-wrap">
+      <div class="vix-scale-bar" id="vix-scale-bar"></div>
+      <div class="vix-scale-labels">
+        <span>10 Calm</span><span>20</span><span>30</span><span>40</span><span>60 Panic</span>
+      </div>
+    </div>
+    <div class="vix-instruments">
+      <div class="vix-inst-title">Recommended Instruments</div>
+      <div class="vix-inst-grid" id="vix-grid"></div>
+    </div>
+  </div>
+
+  <div class="card col-center-right">
+    <div class="card-head">
+      <span class="card-title">Signal Library</span>
+      <span class="card-badge">Click any signal to expand</span>
+    </div>
+    <div class="library-grid" id="lib-grid"></div>
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="disclaimer col-full">
+    <strong>Important:</strong> This dashboard is a research and pattern analysis tool. All trade recommendations are hypothetical, based on historical correlations between public statements and market movements, and carry no guarantee of future performance. This tool does not execute trades. All investment decisions remain entirely with the user. Consult a qualified financial adviser before making any investment decisions. Volatility instruments carry extreme risk of total loss.
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal-box" id="modal-box">
+    <div class="modal-top">
+      <div>
+        <div class="modal-id" id="modal-id-text"></div>
+        <div class="modal-title" id="modal-title-text"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal-bg').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-content" id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════
+
+const SIGNALS = [
+  { id:'S001', name:'Iran Military Escalation', channel:'Truth Social / Press', cat:'geopolitical',
+    repeat:95, hit:92, avgMove:'+9.8% oil · +5% defence', lead:'Premarket same night',
+    desc:'US/Israel military action against Iran. Fires on Truth Social before press conference. Oil surges on Strait of Hormuz supply disruption fears. Defence stocks rise 3–6%. Airlines fall 2–9%. Mirror trade fires on ceasefire statements.',
+    assets:[{n:'WTI Crude',d:'up',m:'+9–23%'},{n:'Brent Crude',d:'up',m:'+8–13%'},{n:'NOC / RTX / LMT',d:'up',m:'+3–6%'},{n:'Airlines (AAL/DAL)',d:'dn',m:'-2 to -9%'},{n:'Gold',d:'up',m:'+1–2%'},{n:'S&P 500 futures',d:'dn',m:'-0.5 to -1.2%'}],
+    tells:['Operation name capitalised — confirms action taken','Past tense victory language — post-event statement','NOW IS THE TIME FOR PEACE — monitor for ceasefire reversal','Warmth language toward Iran/Israel = de-escalation watch'],
+    reversal:'Ceasefire announcement · "deal will be made" language · de-escalation Truth Social post',
+    events:['June 13 2025 — Israel strikes · Brent +8.97% single day','June 21 2025 — US strikes (Operation Midnight Hammer) · WTI +23% mtm','March 2 2026 — US combat ops · NOC +6% · LMT +6.67%'] },
+
+  { id:'S002', name:'Tariff Escalation', channel:'Rose Garden / Truth Social', cat:'trade',
+    repeat:98, hit:90, avgMove:'-12.4% S&P · -30% importers', lead:'Premarket / minutes',
+    desc:'New or expanded tariffs announced. Immediate broad market selloff. Importers (AAPL, NKE, WMT) hit hardest. Domestic steel (NUE, STLD) rally. Reversal fires within days on pause or renegotiation.',
+    assets:[{n:'S&P 500',d:'dn',m:'-3 to -12%'},{n:'Apple (AAPL)',d:'dn',m:'-8 to -15%'},{n:'Nike / WMT / TGT',d:'dn',m:'-5 to -10%'},{n:'Nucor / Steel Dyn.',d:'up',m:'+10–41%'},{n:'USD Dollar',d:'dn',m:'Broad weakening'},{n:'Treasury yields',d:'up',m:'Inflation fears'}],
+    tells:['"Reciprocal" keyword — early planning signal','Country-specific % figure — firm decision already made','No % figure — negotiating posture only','"Liberation" / "Emergency" language — executive order imminent'],
+    reversal:'"THIS IS A GREAT TIME TO BUY!!!" — documented pre-reversal tell. Also: "great call", deal language, named pause duration.',
+    events:['Apr 2 2025 — Liberation Day · S&P -12.4%','Apr 9 2025 — 90-day pause · S&P +9.52% (3rd largest since WW2)','Oct 10 2025 — rare earth threat · $2T wiped in minutes','Feb 20 2026 — Supreme Court rules tariffs illegal'] },
+
+  { id:'S002b', name:'Tariff Pause / Deal', channel:'Truth Social', cat:'trade-reversal',
+    repeat:90, hit:95, avgMove:'+9.5% S&P single day', lead:'Minutes from post',
+    desc:'Mirror trade to S002. Pause, deal or reduction announced. Produces historic single-day rallies. The "BUY!!!" pre-tell on Truth Social is the earliest detectable signal. Beaten-down stocks recover fastest.',
+    assets:[{n:'S&P 500',d:'up',m:'+9.5% single day'},{n:'Nasdaq',d:'up',m:'+12.16% single day'},{n:'AAPL / NVDA / TSLA',d:'up',m:'+15–22%'},{n:'Airlines',d:'up',m:'+22–26% single day'},{n:'Nucor / Steel',d:'dn',m:'Loses tariff premium'},{n:'VIX',d:'dn',m:'Collapses from 52 → 14'}],
+    tells:['"THIS IS A GREAT TIME TO BUY!!!" — strongest single pre-tell in library','Affirmative caps: GREAT DEAL · GREAT CALL','Warm nickname for counterparty restored','Named pause duration = high-confidence formal announcement imminent'],
+    reversal:'This IS the reversal. Monitor for re-escalation within 2–4 weeks.',
+    events:['Apr 9 2025 — "90-day PAUSE" post · S&P +9.52% Nasdaq +12.16%','May 2025 — US-China truce · TSLA +13.9% week','July–Aug 2025 — multiple country deals announced'] },
+
+  { id:'S003', name:'Musk–Trump Relationship', channel:'Truth Social + X', cat:'inner-circle',
+    repeat:88, hit:91, avgMove:'-14% TSLA · +48% recovery', lead:'Same session',
+    desc:'Relationship status between Trump and Musk directly drives TSLA. Hostility = sell. Reconciliation = buy. The 3-stage warmth gradient is detectable before the formal blowup. "CRAZY" post = largest single-day market cap loss in Tesla history ($152B).',
+    assets:[{n:'Tesla (TSLA)',d:'dn',m:'-14 to -17% on hostility'},{n:'Tesla (TSLA)',d:'up',m:'+48% from low over summer'},{n:'Nasdaq composite',d:'dn',m:'Dragged lower'},{n:'SpaceX (private)',d:'n/a',m:'TSLA is the proxy'}],
+    tells:['Trump stops using positive Musk nicknames — Stage 2 warning','Disappointed language — Stage 3, escalation imminent','"CRAZY" keyword — Stage 4, trade active','Musk "went too far" apology — Stage 5, reversal open'],
+    reversal:'Musk apology on X · White House DOGE validation · warmth restored in Trump post',
+    events:['June 5 2025 — TSLA -14% · $152B cap loss — largest ever','June 6 2025 — White House statement · TSLA +7% intraday','June 16 2025 — Musk apology · TSLA +13.9% week','July 8 2025 — America Party announcement · TSLA -6.79%'] },
+
+  { id:'S004', name:'Fed / Powell Threat', channel:'Truth Social / Press', cat:'monetary',
+    repeat:85, hit:88, avgMove:'-1.5% broad · +1.9% on reversal', lead:'Same session',
+    desc:'Trump attacks Powell, implies firing, or demands rate cuts. Broad market sells, dollar weakens, yields move. Pattern repeated twice in 2025 with identical structure. Each reversal ("no intention of firing") produced immediate futures rally.',
+    assets:[{n:'S&P 500',d:'dn',m:'-0.7 to -2%'},{n:'US Dollar (DXY)',d:'dn',m:'Weakens'},{n:'Treasury bonds',d:'dn',m:'Yields rise'},{n:'Gold',d:'up',m:'Safe haven bid'},{n:'S&P futures',d:'up',m:'+1.7–1.9% on reversal'}],
+    tells:['"Major loser" — Stage 4 attack, market sells','"Termination cannot come fast enough" — peak escalation','Repeated posts on same topic — unresolved internally','Rate cut demand without firing threat — lower severity'],
+    reversal:'"I have no intention of firing him" · White House spokesperson confirmation',
+    events:['Apr 17–21 2025 — "termination cannot come fast enough" post','Apr 22 2025 — "no intention" · futures +1.9%','Jul 16 2025 — draft termination letter waved · S&P -0.7%','Jul 17 2025 — "highly unlikely" · partial recovery'] },
+
+  { id:'S005', name:'Crypto Reserve / Policy', channel:'Truth Social (Sunday AM)', cat:'crypto',
+    repeat:72, hit:85, avgMove:'BTC +8% · ADA +60% intraday', lead:'Hours — Sunday posts',
+    desc:'Trump posts crypto-positive policy, typically on weekend mornings. Produces immediate crypto rally across named assets. Decay is fast — 24–48 hours. Crypto also reacts to tariff escalation as risk-off asset (BTC -12.4% on Oct 10 rare earth post).',
+    assets:[{n:'Bitcoin (BTC)',d:'up',m:'+8–10%'},{n:'Ethereum (ETH)',d:'up',m:'+10–13%'},{n:'XRP',d:'up',m:'+27%'},{n:'Solana (SOL)',d:'up',m:'+25%'},{n:'Cardano (ADA)',d:'up',m:'+60% intraday'},{n:'BTC on tariff post',d:'dn',m:'-12.4% in 2 hrs'}],
+    tells:['Named specific coins — high confidence directional signal','"Crypto Capital of the World" — sustained policy intent','Weekend morning post — deliberate pre-market positioning','Tariff escalation post — treat as S002, crypto risk-off'],
+    reversal:'Tariff escalation overrides crypto-positive signal. Monitor S002 concurrently.',
+    events:['Mar 2 2025 — Reserve post · BTC $78K → $94K','XRP +27% SOL +25% ADA +60% same day','Oct 10 2025 — tariff post · BTC -12.4% in 2 hrs from ATH'] },
+
+  { id:'S006', name:'Pharma Pricing Threat', channel:'Pre-market Truth Social', cat:'sector',
+    repeat:90, hit:87, avgMove:'-5 to -15% pharma sector', lead:'Pre-market post',
+    desc:'Trump posts drug pricing policy before market open, followed by executive order. Pharma sector sells broadly. 14 separate company deal announcements created 14 sub-signals. NVO and LLY hit hardest. Generic pharma trades inversely.',
+    assets:[{n:'Pharma ETF (XLV)',d:'dn',m:'-3 to -8%'},{n:'Novo Nordisk (NVO)',d:'dn',m:'Ozempic $1000→$350'},{n:'Eli Lilly (LLY)',d:'dn',m:'Zepbound price cut'},{n:'Merck / AMGN',d:'dn',m:'MFN deal pressure'},{n:'Generic pharma',d:'up',m:'Relative benefit'}],
+    tells:['Pre-market post — executive action same day likely','"30% to 80%" specific range — firm decision made','"Most favoured nations" keyword — sector-wide signal','Named company in post — that stock most affected'],
+    reversal:'Company agreement announced = stock partially recovers as uncertainty resolves.',
+    events:['May 12 2025 — MFN EO pre-market post · pharma selloff','Jul 31 2025 — letters to 17 companies · sustained pressure','Dec 2025 — 14 company deals signed · each a sub-signal'] },
+
+  { id:'S007', name:'China Rare Earth / Tariff', channel:'Truth Social (intraday)', cat:'trade',
+    repeat:88, hit:89, avgMove:'-$2T market cap · BTC -12.4%', lead:'Minutes — 10:57 AM ET documented',
+    desc:'Trump posts mid-session tariff threat against China citing rare earth controls. Produces fastest and largest intraday wipeout in library. October 10 2025 has exact timestamp 10:57 AM ET. S&P was near all-time high when post landed.',
+    assets:[{n:'S&P 500',d:'dn',m:'-$2T from near ATH'},{n:'Nasdaq / Tech',d:'dn',m:'Largest 6-month erasure'},{n:'Bitcoin',d:'dn',m:'-12.4% in 2 hrs'},{n:'Rare earth stocks',d:'up',m:'MP Materials etc.'},{n:'Semiconductors (SOXX)',d:'dn',m:'Supply chain fear'}],
+    tells:['"Massive increase" language — firm escalation, not posturing','"Hostile" as descriptor for China — Stage 4','Captive / monopoly language — peak emotional intensity','Mid-session timing — unplanned post, highest conviction'],
+    reversal:'Follow-up post within 48 hours framing negotiation. Recovery confirmed on positive post.',
+    events:['Oct 10 2025 10:57 AM — $2T wiped from S&P','Oct 13 2025 — recovery post · S&P recovered 2/3 of losses','Pattern confirmed near-carbon-copy of Liberation Day'] },
+
+  { id:'S008', name:'Deliberate Silence Signal', channel:'Truth Social volume', cat:'meta',
+    repeat:75, hit:72, avgMove:'-$1.7T during post cluster without reassurance', lead:'Reactive — no pre-signal',
+    desc:'When Trump posts 100+ times on unrelated topics during a market selloff without addressing markets, the silence is the signal — escalation will continue. Conversely, a single calm market-addressed post during a selloff is the strongest buy signal in the library.',
+    assets:[{n:'Broad market',d:'dn',m:'-$1.7T during silence'},{n:'VIX',d:'up',m:'Elevates without reassurance'},{n:'All assets on reassurance',d:'up',m:'Strongest single-post buy signal'}],
+    tells:['High post volume on unrelated topics — avoidance pattern','Zero market posts during selloff — no bottom yet','Single calm market-addressed post — genuine bottom signal','Post cluster on same topic — issue unresolved internally'],
+    reversal:'First market-addressed reassurance post. Stronger when followed by policy announcement.',
+    events:['Mar 10 2025 — 100+ posts while Nasdaq -4%','$1.7T wiped · Tesla -15% on day'] },
+
+  { id:'V001', name:'Vol — Pre-Signal Accumulation', channel:'VIX sub-18 + catalyst window', cat:'volatility',
+    repeat:82, hit:78, avgMove:'UVXY +100% · VIX calls +500%', lead:'Hours to days before event',
+    desc:'VIX below 18 and a Trump catalyst window is approaching. Buy volatility instruments before the market prices the event. April 2025 had VIX in the 18s before Liberation Day — UVXY doubled. OTM VIX calls at $30 strike returned 500% in one week.',
+    assets:[{n:'VXX',d:'up',m:'+50–100% on spike'},{n:'UVXY (1.5x)',d:'up',m:'+100% April 2025'},{n:'VIX calls OTM',d:'up',m:'+500% April 2025'},{n:'/VXM mini futures',d:'up',m:'$100/pt accessible'}],
+    tells:['Post cluster building on same topic','Warmth gradient declining toward counterparty','Unusual hour posts starting to appear','Known policy deadline approaching within days'],
+    reversal:'VIX spike above 40 — begin exit. First de-escalation post — hard exit.',
+    events:['Apr 2025 — VIX 18 → 52.33 · UVXY doubled','OTM $30 calls returned 500% in one week','Oct 2025 — VIX +35% single Friday on China post'] },
+
+  { id:'V002', name:'Vol — Post-Spike Reversal', channel:'VIX 40+ + de-escalation', cat:'volatility',
+    repeat:90, hit:93, avgMove:'VIX 52 → 14 · SVXY recovers', lead:'Minutes from de-escalation post',
+    desc:'After VIX spikes above 40, watch for first de-escalation language on Truth Social. Entry for inverse volatility and equity long. The April 9 BUY post triggered VIX collapse from 52 to 14 by August. S&P gained 9.52% in a single day.',
+    assets:[{n:'SVXY (short vol)',d:'up',m:'Post-spike recovery'},{n:'S&P 500 (SPY)',d:'up',m:'+9.52% single day'},{n:'QQQ Nasdaq',d:'up',m:'+12.16% single day'},{n:'VXX / UVXY',d:'dn',m:'Exit on de-escalation'}],
+    tells:['"THIS IS A GREAT TIME TO BUY" — strongest reversal tell','Great call / great leader — warmth restored = approaching reversal','"Deal" language appearing — formal announcement imminent','Cooler heads / working on it — Stage 5 language'],
+    reversal:'This IS the reversal trade. Monitor for re-escalation within 2–4 weeks.',
+    events:['Apr 9 2025 — BUY post · VIX 52 → 14 over following weeks','S&P +9.52% Nasdaq +12.16% single day','SVXY collapsed on way up (Apr 2–8) — post-spike only'] },
+];
+
+const FEED_ITEMS = [
+  { id:'F001', src:'Truth Social', actor:'Trump', time:'10:57 AM ET', dir:'escalation', ref:'S007', score:84,
+    text:'"China is becoming VERY HOSTILE with the rest of the World, especially their control on Rare Earth Minerals. One of the policies we are calculating is a MASSIVE INCREASE of Tariffs on Chinese products."',
+    tags:['Stage 4 Hostility','Specific Threat','Mid-Session Post','High Caps Intensity'],
+    dims:{nickname:15,caps:90,length:72,timing:85,warmth:10} },
+  { id:'F002', src:'Truth Social', actor:'Trump', time:'08:14 AM ET', dir:'escalation', ref:'S001', score:91,
+    text:'"We have completed our very successful attack on the three Nuclear sites in Iran — Fordow, Natanz, and Esfahan. NOW IS THE TIME FOR PEACE! Thank you for your attention to this matter."',
+    tags:['Military Action','Oil Signal','Defence Long','Airline Short'],
+    dims:{nickname:40,caps:70,length:65,timing:95,warmth:50} },
+  { id:'F003', src:'Truth Social', actor:'Trump', time:'06:32 AM ET', dir:'deescalation', ref:'S002b', score:97,
+    text:'"I have authorized a 90 day PAUSE, and a substantially lowered Reciprocal Tariff during this period, of 10%, also effective immediately. THIS IS A GREAT TIME TO BUY!!!"',
+    tags:['Buy Signal','Tariff Pause','Pre-Market','Historic Reversal'],
+    dims:{nickname:60,caps:85,length:55,timing:90,warmth:80} },
+  { id:'F004', src:'Truth Social', actor:'Trump', time:'11:23 PM ET', dir:'escalation', ref:'S004', score:79,
+    text:'"Powell\'s termination cannot come fast enough! He is always TOO LATE AND WRONG. Interest Rates should be lowered immediately. NO INFLATION!"',
+    tags:['Fed Attack','Stage 4','Late Night Post','Dollar Weakness'],
+    dims:{nickname:10,caps:80,length:60,timing:88,warmth:5} },
+  { id:'F005', src:'Truth Social', actor:'Trump', time:'09:02 AM ET', dir:'deescalation', ref:'S005', score:76,
+    text:'"The U.S. will create a Crypto Strategic Reserve that includes XRP, SOL, and ADA. I will make sure the U.S. is the Crypto Capital of the World!"',
+    tags:['Crypto Long','XRP SOL ADA','Weekend AM','Policy Intent'],
+    dims:{nickname:55,caps:50,length:50,timing:82,warmth:70} },
+  { id:'F006', src:'X / Musk', actor:'Musk', time:'02:17 PM ET', dir:'escalation', ref:'S003', score:82,
+    text:'"Trump\'s tariffs will cause a recession. The One Big Beautiful Bill is big or beautiful but cannot be both. Is it time to create a new political party in America?"',
+    tags:['Musk vs Trump','Tesla Short','Stage 3 → 4','Relationship Risk'],
+    dims:{nickname:20,caps:45,length:68,timing:55,warmth:15} },
+  { id:'F007', src:'Truth Social', actor:'Trump', time:'07:45 AM ET', dir:'deescalation', ref:'S002b', score:88,
+    text:'"Just had a GREAT call with President Xi. It resulted in a very positive conclusion. Both leaders extended invitations. A deal will be made. AMERICA WINS!"',
+    tags:['Warmth Restored','Deal Language','Tariff Reversal Watch','Buy Signal'],
+    dims:{nickname:85,caps:65,length:58,timing:75,warmth:90} },
+  { id:'F008', src:'Truth Social', actor:'Trump', time:'05:58 AM ET', dir:'escalation', ref:'S006', score:72,
+    text:'"Drug prices will be reduced IMMEDIATELY by 30% to 80%. Most Favoured Nation pricing starts TODAY. Americans will no longer subsidise the world!"',
+    tags:['Pharma Short','Pre-Market Post','Sector Specific','EO Imminent'],
+    dims:{nickname:30,caps:75,length:62,timing:85,warmth:45} },
+  { id:'F009', src:'Truth Social', actor:'Trump', time:'03:44 AM ET', dir:'deescalation', ref:'S004', score:85,
+    text:'"I have no intention of firing Chairman Powell. The press runs away with things. I would like him to be more active in terms of lowering interest rates. That is all."',
+    tags:['Fed Safe','Futures +1.9%','Stage 4 → 5','Dollar Recovery'],
+    dims:{nickname:50,caps:20,length:55,timing:70,warmth:65} },
+  { id:'F010', src:'Truth Social', actor:'Trump', time:'08:31 AM ET', dir:'escalation', ref:'S003', score:88,
+    text:'"Elon was wearing thin, I asked him to leave. I took away his EV Mandate and he just went CRAZY! He knows he would have lost without me."',
+    tags:['Tesla -14%','Musk Attack','Contract Threat','$152B Cap Loss'],
+    dims:{nickname:10,caps:55,length:70,timing:72,warmth:5} },
+  { id:'F011', src:'Truth Social', actor:'Trump', time:'12:02 PM ET', dir:'escalation', ref:'S002', score:68,
+    text:'"Tariffs are our greatest weapon and we will use them. The United States will not be held CAPTIVE by anyone. We are calculating our next move."',
+    tags:['Trade War','VIX Watch','Broad Selloff','Accumulate Vol'],
+    dims:{nickname:30,caps:60,length:58,timing:52,warmth:20} },
+  { id:'F012', src:'Truth Social', actor:'Trump', time:'10:15 AM ET', dir:'escalation', ref:'S001', score:74,
+    text:'"We have a great military. Iran has been warned. Time is running out for those who wish to do us harm. The strongest military in the world is on standby."',
+    tags:['Iran Warning','Oil Watch','Pre-Escalation','Stage 3'],
+    dims:{nickname:45,caps:35,length:60,timing:68,warmth:30} },
+];
+
+const TRADES = {
+  S007:[
+    { type:'short', inst:'S&P 500 Puts (SPY)', conf:84, entry:'At open / current price', target:'-3 to -8% SPY', stop:'+1.5% SPY / de-escalation post',
+      rationale:'<strong>Signal S007 — China Rare Earth Tariff Threat confirmed.</strong> The October 10 2025 precedent produced a $2 trillion intraday wipeout on an identical post structure. The current post contains three escalation markers: <strong>"HOSTILE" Stage 4 language</strong>, a specific policy action framed as currently being calculated (firm decision language), and mid-session timing indicating an unplanned, high-conviction statement. Historical hit rate: 89%. Broad market short via SPY puts is the primary trade. Duration: intraday to 48 hours until a de-escalation post fires.' },
+    { type:'vol', inst:'UVXY / VIX Calls ($30 strike)', conf:91, entry:'Immediate — before news cycle', target:'VIX 35–40', stop:'VIX below 22 / first de-escalation post',
+      rationale:'<strong>Volatility accumulation trade.</strong> Current VIX at 24.8 — elevated but below the 40+ crisis threshold. Mid-session surprise post structure is the specific pattern that produced the fastest intraday volatility spike in the library. OTM VIX calls at the $30 strike carry defined risk with asymmetric upside. The October 2025 precedent saw VIX jump 35% in a single Friday session. <strong>Set a hard exit rule</strong> — first de-escalation Truth Social post equals exit. This is a 24–72 hour maximum hold.' },
+    { type:'short', inst:'Semiconductor ETF (SOXX)', conf:78, entry:'At open', target:'-5 to -10% SOXX', stop:'+2% SOXX / rare earth policy clarified',
+      rationale:'Rare earth export controls are the specific mechanism cited. Semiconductor manufacturing is <strong>critically dependent on Chinese rare earth elements</strong> — an export restriction directly threatens fab inputs for Nvidia, AMD, Intel and the broader SOXX ETF. Secondary to the SPY short but with higher sector-specific exposure. Duration: until rare earth restriction is clarified or walked back in a follow-up post.' },
+  ],
+  S001:[
+    { type:'long', inst:'WTI Crude / Oil ETF (USO)', conf:92, entry:'Premarket / at open', target:'+8–15% WTI', stop:'Ceasefire announcement on Truth Social',
+      rationale:'<strong>Signal S001 — Iran Military Escalation confirmed.</strong> This is the most consistently traded pattern in the library, having fired three times with near-identical results. A US military strike on Iran produces immediate Strait of Hormuz supply disruption fear. Brent and WTI spike in premarket. The June 2025 operation produced a <strong>23% month-on-month WTI gain</strong>. The current post confirms strikes are complete — the geopolitical escalation is now a fact, not a threat. Hold until ceasefire language appears.' },
+    { type:'long', inst:'Defence ETF (ITA / LMT / RTX)', conf:88, entry:'Premarket', target:'+4–8% ITA', stop:'Ceasefire language on Truth Social',
+      rationale:'<strong>Defence stocks are the cleanest long in this signal.</strong> NOC rose 6%, RTX 4.7%, LMT 3.37% on the March 2026 escalation. The rationale is dual: immediate munitions demand (Tomahawk cruise missiles deployed), and long-term expectation of elevated US defence spending. Note the reversal risk — defence stocks slip on ceasefire announcements. RTX is most sensitive to the cycle. LMT is most insulated. ITA is the diversified expression.' },
+    { type:'short', inst:'Airline ETF (JETS / DAL / UAL)', conf:85, entry:'At open', target:'-4 to -9% JETS', stop:'Ceasefire / oil price reversal',
+      rationale:'Airlines face a triple hit: <strong>fuel cost increase</strong> from rising oil, <strong>regional airspace closures</strong> disrupting Middle East hub operations, and <strong>demand uncertainty</strong> from travel fears. Air France -9.4% and Lufthansa -5.2% in June 2025 — European carriers with Middle East exposure hit hardest. JETS ETF captures broad airline exposure. Watch for de-escalation ceasefire post — airlines recover sharply on any peace signal.' },
+  ],
+  S002b:[
+    { type:'long', inst:'QQQ / Nasdaq ETF', conf:97, entry:'Immediately on post detection', target:'+8–12% QQQ', stop:'Re-escalation post within 24hrs',
+      rationale:'<strong>"THIS IS A GREAT TIME TO BUY!!!" is the highest-confidence signal in the entire library.</strong> On April 9 2025 this exact post structure produced the third-largest single-day S&P gain since World War II (+9.52%) and the Nasdaq largest gain since 2001 (+12.16%). Trump signals internally before announcing formally — the gap between this post and the official announcement is the entry window. Beaten-down tech and importers recover fastest. AAPL, NVDA, TSLA gained 15–22% on that single day.' },
+    { type:'short', inst:'Exit UVXY / VXX (short vol)', conf:95, entry:'On post detection', target:'VIX 20 → 14 over weeks', stop:'New escalation post within 24hrs',
+      rationale:'<strong>If long volatility positions are held, this is the hard exit signal.</strong> The reversal post triggers VIX collapse — the April 2025 cycle saw VIX fall from 52 to 14.31 by August. UVXY halved in value. Any long volatility positions (UVXY, VXX, VIX calls) must be exited on or immediately after the de-escalation post. Contango decay accelerates losses if held. SVXY (inverse volatility) is the post-spike instrument — only safe after VIX has peaked and de-escalation is confirmed.' },
+  ],
+  S003:[
+    { type:'short', inst:'Tesla (TSLA)', conf:88, entry:'On post / at open', target:'-10 to -17% TSLA', stop:'Musk apology or White House statement',
+      rationale:'<strong>Signal S003 — Musk–Trump hostility confirmed.</strong> The "CRAZY" keyword and EV mandate threat constitute Stage 4 open hostility. On June 5 2025, an identical post structure produced the <strong>largest single-day market cap loss in Tesla history — $152 billion wiped, stock -14 to -17%.</strong> The mechanism is dual: regulatory risk (EV tax credit removal threat) and SpaceX contract termination threat amplifying uncertainty. The reversal trade is equally compelling — Tesla rose 48% from the June 5 low by September 2025. Short is the immediate trade on this structure.' },
+  ],
+  S004:[
+    { type:'long', inst:'Gold (GLD / Futures)', conf:80, entry:'On attack post', target:'+1.5–3% GLD', stop:'"No intention of firing" statement',
+      rationale:'<strong>Fed independence threat is a gold catalyst.</strong> When Trump attacks Powell and implies firing, the market sells equities but the more durable trade is gold — benefiting from dollar weakness and inflation expectations that a politicised Fed implies. Dollar weakened and gold rose on both Powell attack cycles in 2025. This is a 24–72 hour trade — the reversal ("no intention of firing") closes it quickly. A genuine firing attempt would be a tail risk event requiring full reassessment.' },
+  ],
+  default:[
+    { type:'watch', inst:'No Active Trade — Monitor', conf:45, entry:'Wait', target:'Monitor for 60 mins', stop:'N/A',
+      rationale:'<strong>No high-confidence signal detected.</strong> Current post score is below the 70-point threshold for a formal trade recommendation. The language analysis shows mixed indicators — some escalation markers present but no specific numerical threat, no Stage 4 language confirmed, and post timing is within normal hours. Recommended action: monitor Truth Social for follow-up posts on the same topic within the next 60 minutes. A post cluster of 3 or more posts in under an hour on the same subject elevates signal confidence by approximately 15 points.' },
+  ],
+};
+
+const HISTORY = [
+  { st:'win',  text:'<strong>S002 Liberation Day</strong> — UVXY entry at $25 before Apr 2 announcement',  ret:'+100%' },
+  { st:'win',  text:'<strong>S002b Tariff Pause</strong> — QQQ long on "BUY!!!" Truth Social post Apr 9',   ret:'+12.1%'},
+  { st:'win',  text:'<strong>S001 Iran Escalation</strong> — WTI crude long on Operation Midnight Hammer',  ret:'+23%'  },
+  { st:'win',  text:'<strong>S003 Musk Feud</strong> — TSLA short on "CRAZY" post June 5',                  ret:'+14%'  },
+  { st:'win',  text:'<strong>S007 Rare Earth</strong> — VIX calls $30 strike before Oct 10 post',           ret:'+340%' },
+  { st:'win',  text:'<strong>S004 Powell Attack</strong> — Gold long on "termination" post',                ret:'+2.1%' },
+  { st:'loss', text:'<strong>S005 Crypto Reserve</strong> — BTC long held past 48hr decay window',          ret:'-8%'   },
+  { st:'win',  text:'<strong>S003b Musk Apology</strong> — TSLA long on reconciliation post Jun 16',        ret:'+13.9%'},
+  { st:'pending', text:'<strong>S007 Current</strong> — SPY puts active on China rare earth post',          ret:'Open'  },
+];
+
+const ASSETS = [
+  { group:'Energy',         ticker:'WTI',   name:'Crude Oil (WTI)',      price:'$78.40',   chg:'+2.1%', dir:'up', sig:'Trade',sig_t:'trade' },
+  { group:'Energy',         ticker:'BRENT', name:'Brent Crude',          price:'$82.15',   chg:'+1.9%', dir:'up', sig:'Trade',sig_t:'trade' },
+  { group:'Indices',        ticker:'SPY',   name:'S&P 500 ETF',          price:'$547.20',  chg:'-1.8%', dir:'dn', sig:'Alert',sig_t:'alert' },
+  { group:'Indices',        ticker:'QQQ',   name:'Nasdaq 100 ETF',       price:'$464.80',  chg:'-2.3%', dir:'dn', sig:'Alert',sig_t:'alert' },
+  { group:'Indices',        ticker:'DJI',   name:'Dow Jones',            price:'40,612',   chg:'-0.9%', dir:'dn', sig:null,  sig_t:null    },
+  { group:'Volatility',     ticker:'VIX',   name:'Volatility Index',     price:'24.8',     chg:'+28%',  dir:'up', sig:'Watch',sig_t:'watch' },
+  { group:'Volatility',     ticker:'UVXY',  name:'Long Vol 1.5x ETF',    price:'$38.60',   chg:'+18%',  dir:'up', sig:'Trade',sig_t:'trade' },
+  { group:'Volatility',     ticker:'VXX',   name:'VIX Short-Term ETN',   price:'$22.40',   chg:'+14%',  dir:'up', sig:'Watch',sig_t:'watch' },
+  { group:'Defence',        ticker:'LMT',   name:'Lockheed Martin',      price:'$512.30',  chg:'+3.4%', dir:'up', sig:'Trade',sig_t:'trade' },
+  { group:'Defence',        ticker:'RTX',   name:'RTX Corp',             price:'$138.70',  chg:'+4.1%', dir:'up', sig:'Trade',sig_t:'trade' },
+  { group:'Defence',        ticker:'NOC',   name:'Northrop Grumman',     price:'$548.90',  chg:'+5.2%', dir:'up', sig:'Trade',sig_t:'trade' },
+  { group:'Airlines',       ticker:'DAL',   name:'Delta Air Lines',      price:'$43.20',   chg:'-3.8%', dir:'dn', sig:'Watch',sig_t:'watch' },
+  { group:'Airlines',       ticker:'UAL',   name:'United Airlines',      price:'$68.40',   chg:'-2.9%', dir:'dn', sig:'Watch',sig_t:'watch' },
+  { group:'Airlines',       ticker:'AAL',   name:'American Airlines',    price:'$12.80',   chg:'-4.2%', dir:'dn', sig:'Alert',sig_t:'alert' },
+  { group:'Tech / Importers',ticker:'AAPL', name:'Apple Inc',            price:'$201.40',  chg:'-2.8%', dir:'dn', sig:'Watch',sig_t:'watch' },
+  { group:'Tech / Importers',ticker:'NVDA', name:'Nvidia',               price:'$128.60',  chg:'-3.1%', dir:'dn', sig:'Watch',sig_t:'watch' },
+  { group:'Tech / Importers',ticker:'TSLA', name:'Tesla',                price:'$298.40',  chg:'-6.2%', dir:'dn', sig:'Alert',sig_t:'alert' },
+  { group:'Commodities',    ticker:'GLD',   name:'Gold ETF',             price:'$228.60',  chg:'+0.9%', dir:'up', sig:'Watch',sig_t:'watch' },
+  { group:'Commodities',    ticker:'BTC',   name:'Bitcoin',              price:'$109,400', chg:'-4.8%', dir:'dn', sig:'Alert',sig_t:'alert' },
+  { group:'Domestic / Steel',ticker:'NUE',  name:'Nucor Steel',          price:'$176.20',  chg:'+2.3%', dir:'up', sig:'Watch',sig_t:'watch' },
+  { group:'Pharma',         ticker:'NVO',   name:'Novo Nordisk',         price:'$68.40',   chg:'-1.4%', dir:'dn', sig:'Watch',sig_t:'watch' },
+  { group:'Pharma',         ticker:'XLV',   name:'Healthcare ETF',       price:'$148.70',  chg:'-0.8%', dir:'dn', sig:null,  sig_t:null    },
+  { group:'Semiconductors', ticker:'SOXX',  name:'Semiconductor ETF',    price:'$238.40',  chg:'-3.1%', dir:'dn', sig:'Alert',sig_t:'alert' },
+  { group:'Currency',       ticker:'DXY',   name:'US Dollar Index',      price:'102.4',    chg:'-0.6%', dir:'dn', sig:'Watch',sig_t:'watch' },
+];
+
+function getVIXRegime(v) {
+  if (v < 15) return { label:'Calm',    color:'#1a9e5c', desc:'Low volatility. Optimal window to accumulate long vol positions ahead of known catalyst windows.', insts:[{t:'VXX',d:'1x long vol — low entry cost',rec:true},{t:'UVXY',d:'1.5x aggressive',rec:false},{t:'VIX calls OTM',d:'Cheapest defined risk',rec:true},{t:'SVXY',d:'Short vol — regime favourable',rec:false}] };
+  if (v < 25) return { label:'Elevated', color:'#e07b00', desc:'Post-Liberation Day regime. Institutional hedging active. Market more sensitive to any Trump statement.',insts:[{t:'VXX',d:'Active — already moving',rec:true},{t:'UVXY',d:'1.5x — hard stop required',rec:true},{t:'/VXM',d:'Mini futures $100/pt',rec:false},{t:'SVXY',d:'Caution — spike risk high',rec:false}] };
+  if (v < 40) return { label:'Stressed', color:'#e07b00', desc:'Active stress. Volatility expensive. Watch for de-escalation language — this is the pre-reversal zone.',insts:[{t:'VXX',d:'Consider partial profit',rec:false},{t:'VXZ',d:'Mid-term if sustained',rec:true},{t:'UVXY',d:'Begin scaling out',rec:false},{t:'SVXY',d:'Not yet — too early',rec:false}] };
+  return { label:'Crisis', color:'#e03535', desc:'All-out panic. VIX above 40. Position for the reversal trade. The "BUY" post pattern becomes imminent.',insts:[{t:'SVXY',d:'Post de-escalation entry',rec:true},{t:'SPY',d:'Long on reversal signal',rec:true},{t:'QQQ calls',d:'Beaten tech recovers fastest',rec:true},{t:'VXX/UVXY',d:'EXIT — decay accelerates',rec:false}] };
+}
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let activeItem = FEED_ITEMS[0];
+
+// ════════════════════════════════════════
+// RENDER — FEED
+// ════════════════════════════════════════
+function renderFeed() {
+  const el = document.getElementById('feed-list');
+  el.innerHTML = FEED_ITEMS.map((f,i) => {
+    const pill = f.score >= 80 ? 'high' : f.score >= 65 ? 'med' : 'low';
+    const tagCls = f.dir === 'deescalation' ? 'green' : f.dir === 'escalation' ? 'blue' : '';
+    return `<div class="feed-item ${f.dir} ${i===0?'active':''}" id="fi-${f.id}" onclick="selectFeed('${f.id}')">
+      <div class="feed-meta">
+        <span class="feed-source">${f.src}</span>
+        <span class="feed-actor">${f.actor}</span>
+        <span class="feed-time">${f.time}</span>
+        <span class="feed-score-pill ${pill}">${f.score}</span>
+      </div>
+      <div class="feed-text">${f.text.length>110?f.text.slice(0,110)+'…':f.text}</div>
+      <div class="feed-tags">${f.tags.map(t=>`<span class="tag ${tagCls}">${t}</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectFeed(id) {
+  const item = FEED_ITEMS.find(f => f.id === id);
+  if (!item) return;
+  activeItem = item;
+  document.querySelectorAll('.feed-item').forEach(e => e.classList.remove('active'));
+  document.getElementById('fi-' + id)?.classList.add('active');
+  // Live items (LIVE-*) update panels directly via applyAnalysisResult
+  // Static items use the pre-built render functions
+  if (!id.startsWith('LIVE-')) {
+    renderAnalysis();
+    renderTrades();
+  }
+}
+
+// ════════════════════════════════════════
+// RENDER — ANALYSIS
+// ════════════════════════════════════════
+const DESCS = {
+  S007:'Specific tariff figure present. "HOSTILE" Stage 4 language. Mid-session post indicates unplanned, high-conviction statement. Post cluster building.',
+  S001:'Military action confirmed. Operation name capitalised. Premarket timing. "NOW IS THE TIME FOR PEACE" detected — monitor for ceasefire reversal.',
+  S002b:'"THIS IS A GREAT TIME TO BUY!!!" — documented pre-reversal tell. Affirmative caps. Deal language present. Highest confidence reversal in library.',
+  S004:'Fed attack language. "Termination" keyword detected. Late night post timing. Dollar weakness and gold bid expected.',
+  S005:'Crypto-positive policy signal. Specific coin names listed. Weekend morning timing. 24–48 hour decay window — plan fast exit.',
+  S003:'Musk–Trump Stage 4 hostility. "CRAZY" keyword detected. Contract threat language present. Tesla short signal active.',
+  S002:'Tariff threat language. Watch for numerical % figure to confirm. Broad selloff pattern expected.',
+  S006:'Pre-market post detected. Drug pricing EO language. Pharma sector short signal. Specific % reduction stated.',
+  S008:'Post cluster on unrelated topics during selloff — deliberate silence pattern. Continuation signal.',
+  default:'Mixed signal. No dominant pattern. Monitor for follow-up posts within 60 minutes.',
+};
+
+const WARMTH_LABELS = [
+  'Stage 1 — Superlative praise. Cooperative announcement likely. Consider de-escalation trade.',
+  'Stage 2 — Neutral reference. Warning: warmth fading. Monitor for Stage 3 within 48 hours.',
+  'Stage 3 — Qualified criticism. Pre-escalation warning. Begin volatility accumulation.',
+  'Stage 4 — Open hostility. Escalation trade window confirmed. Primary signal active.',
+  'Stage 5 — De-escalation language. Reversal trade window open. Watch for formal announcement.',
+];
+
+function renderAnalysis() {
+  const f = activeItem;
+  const esc = f.dir === 'escalation';
+  const deesc = f.dir === 'deescalation';
+  const col = esc ? '#1565c0' : deesc ? '#1a9e5c' : '#e07b00';
+
+  document.getElementById('analysis-ref').textContent = 'Signal ' + f.ref;
+  document.getElementById('comp-num').textContent = f.score;
+  document.getElementById('comp-num').style.color = col;
+  document.getElementById('comp-dir').textContent = esc ? '▲ Escalation Detected' : deesc ? '▼ De-escalation Signal' : '→ Neutral / Monitor';
+  document.getElementById('comp-dir').style.color = col;
+  document.getElementById('comp-desc').textContent = DESCS[f.ref] || DESCS['default'];
+
+  // Score cells
+  const cells = [
+    { label:'Nickname Sentiment',  val: f.dims.nickname, col: f.dims.nickname < 30 ? '#e03535' : f.dims.nickname > 70 ? '#1a9e5c' : '#e07b00' },
+    { label:'Caps Intensity',      val: f.dims.caps,     col: f.dims.caps > 70 ? '#e03535' : '#e07b00' },
+    { label:'Post Length / Type',  val: f.dims.length,   col: '#1565c0' },
+    { label:'Timing Anomaly',      val: f.dims.timing,   col: f.dims.timing > 75 ? '#e03535' : '#e07b00' },
+  ];
+  document.getElementById('score-grid').innerHTML = cells.map(c=>`
+    <div class="score-cell">
+      <div class="score-cell-label">${c.label}</div>
+      <div class="score-cell-val" style="color:${c.col}">${c.val}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${c.val}%;background:${c.col}"></div></div>
+    </div>`).join('');
+
+  // Warmth gradient
+  const stage = f.dims.warmth > 80 ? 0 : f.dims.warmth > 60 ? 1 : f.dims.warmth > 35 ? 2 : f.dims.warmth > 15 ? 3 : 4;
+  const stageNames = ['Superlative Praise','Neutral Reference','Qualified Criticism','Open Hostility','De-escalation'];
+  const stageCls = [' active-up',' active-up',' active-warn',' active-stage',' active-up'];
+  document.getElementById('warmth-stages').innerHTML = stageNames.map((s,i)=>
+    `<div class="warmth-stage${i===stage?stageCls[i]:''}">${s}</div>`
+  ).join('');
+  document.getElementById('warmth-desc').textContent = WARMTH_LABELS[stage];
+
+  // Language rows
+  const langs = [
+    { name:'Escalation Keywords',  val: f.dims.caps,    col: '#e03535' },
+    { name:'Warmth Gradient',      val: f.dims.warmth,  col: '#1a9e5c' },
+    { name:'Timing Score',         val: f.dims.timing,  col: '#e07b00' },
+    { name:'Specificity Score',    val: f.dims.length,  col: '#1565c0' },
+    { name:'Composite Signal',     val: f.score,        col: col       },
+  ];
+  document.getElementById('lang-rows').innerHTML = langs.map(l=>`
+    <div class="lang-row">
+      <span class="lang-name">${l.name}</span>
+      <div class="lang-bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:${l.val}%;background:${l.col}"></div></div></div>
+      <span class="lang-val" style="color:${l.col}">${l.val}</span>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// RENDER — TRADES
+// ════════════════════════════════════════
+function renderTrades() {
+  const trades = TRADES[activeItem.ref] || TRADES['default'];
+  const badgeMap = { long:'badge-long',short:'badge-short',vol:'badge-vol',watch:'badge-watch' };
+  const labelMap = { long:'Long',short:'Short',vol:'Volatility',watch:'Monitor' };
+  const confCol = c => c >= 85 ? '#1a9e5c' : c >= 70 ? '#e07b00' : '#9098a8';
+
+  document.getElementById('trade-cards').innerHTML = trades.map(t=>`
+    <div class="trade-card">
+      <div class="trade-card-head">
+        <div>
+          <span class="trade-type-badge ${badgeMap[t.type]}">${labelMap[t.type]}</span>
+          <div class="trade-instrument">${t.inst}</div>
+        </div>
+        <div class="trade-conf-wrap">
+          <div class="trade-conf-num" style="color:${confCol(t.conf)}">${t.conf}%</div>
+          <div class="trade-conf-label">Confidence</div>
+        </div>
+      </div>
+      <div class="trade-rationale">${t.rationale}</div>
+      <div class="trade-targets">
+        <div class="trade-target">
+          <div class="trade-target-label">Entry</div>
+          <div class="trade-target-val" style="color:#e07b00">${t.entry}</div>
+        </div>
+        <div class="trade-target">
+          <div class="trade-target-label">Target</div>
+          <div class="trade-target-val" style="color:#1a9e5c">${t.target}</div>
+        </div>
+        <div class="trade-target">
+          <div class="trade-target-label">Stop / Exit</div>
+          <div class="trade-target-val" style="color:#e03535">${t.stop}</div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('history-rows').innerHTML = HISTORY.map(h=>`
+    <div class="history-row">
+      <div class="hist-indicator ${h.st}"></div>
+      <div class="hist-text">${h.text}</div>
+      <div class="hist-return ${h.st==='win'?'pos':h.st==='loss'?'neg':'pend'}">${h.ret}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// RENDER — ASSETS
+// ════════════════════════════════════════
+function renderAssets() {
+  const groups = [...new Set(ASSETS.map(a=>a.group))];
+  document.getElementById('asset-groups').innerHTML = groups.map(g=>{
+    const rows = ASSETS.filter(a=>a.group===g).map(a=>`
+      <div class="asset-row">
+        <span class="asset-ticker">${a.ticker}</span>
+        <span class="asset-name">${a.name}</span>
+        <span class="asset-price">${a.price}</span>
+        <span class="asset-chg ${a.dir==='up'?'up':'dn'}" style="color:${a.dir==='up'?'var(--up)':'var(--down)'}">${a.chg}</span>
+        ${a.sig ? `<span class="asset-sig-pill ${a.sig_t==='trade'?'sig-trade':a.sig_t==='watch'?'sig-watch':'sig-alert'}">${a.sig}</span>` : '<span style="width:44px;margin-left:8px;"></span>'}
+      </div>`).join('');
+    return `<div class="asset-group-label">${g}</div>${rows}`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// RENDER — VIX
+// ════════════════════════════════════════
+function renderVIX() {
+  const vix = 24.8;
+  const r = getVIXRegime(vix);
+  document.getElementById('vix-num').textContent = vix;
+  document.getElementById('vix-num').style.color = r.color;
+  document.getElementById('vix-regime').textContent = r.label;
+  document.getElementById('vix-regime').style.color = r.color;
+  document.getElementById('vix-regime-desc').textContent = r.desc;
+  document.getElementById('vix-badge').textContent = 'VIX ' + vix;
+
+  const segs = ['#1a9e5c','#8bc34a','#e07b00','#e05535','#e03535'];
+  const sizes = [20,20,20,20,20];
+  const current = vix < 15 ? 0 : vix < 20 ? 1 : vix < 30 ? 2 : vix < 40 ? 3 : 4;
+  document.getElementById('vix-scale-bar').innerHTML = segs.map((c,i)=>
+    `<div class="vix-seg" style="background:${c};opacity:${i===current?1:0.25};flex:${sizes[i]}"></div>`
+  ).join('');
+
+  document.getElementById('vix-grid').innerHTML = r.insts.map(i=>`
+    <div class="vix-inst-card ${i.rec?'rec':''}">
+      <div class="vix-inst-ticker">${i.t}${i.rec?' ★':''}</div>
+      <div class="vix-inst-desc">${i.d}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// RENDER — LIBRARY
+// ════════════════════════════════════════
+function renderLibrary() {
+  document.getElementById('lib-grid').innerHTML = SIGNALS.map(s=>`
+    <div class="lib-card" onclick="openModal('${s.id}')">
+      <div class="lib-id">${s.id}</div>
+      <div class="lib-name">${s.name}</div>
+      <div class="lib-channel">${s.channel}</div>
+      <div class="lib-stats-row">
+        <div class="lib-stat">
+          <div class="lib-stat-val" style="color:#1565c0">${s.hit}%</div>
+          <div class="lib-stat-label">Hit Rate</div>
+        </div>
+        <div class="lib-stat">
+          <div class="lib-stat-val" style="color:#1a9e5c">${s.repeat}%</div>
+          <div class="lib-stat-label">Repeat</div>
+        </div>
+      </div>
+      <div class="lib-bar-track"><div class="lib-bar-fill" style="width:${s.hit}%"></div></div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// RENDER — TICKER
+// ════════════════════════════════════════
+function renderTicker() {
+  const items = ASSETS.slice(0,12).map(a=>
+    `<span class="tick-item">${a.ticker} <span class="${a.dir==='up'?'up':'dn'}">${a.price} ${a.chg}</span></span>`
+  ).join('');
+  const track = document.getElementById('ticker');
+  track.innerHTML = items + items;
+}
+
+// ════════════════════════════════════════
+// MODAL
+// ════════════════════════════════════════
+function openModal(id) {
+  const s = SIGNALS.find(x=>x.id===id);
+  if (!s) return;
+  document.getElementById('modal-id-text').textContent = s.id + ' — ' + s.cat.toUpperCase();
+  document.getElementById('modal-title-text').textContent = s.name;
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-section">
+      <div class="modal-section-title">Description</div>
+      <p class="modal-text">${s.desc}</p>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Asset Movements</div>
+      <div class="modal-asset-grid">${s.assets.map(a=>`
+        <div class="modal-asset-card">
+          <div class="modal-asset-name">${a.n}</div>
+          <div class="modal-asset-dir ${a.d}">${a.d==='up'?'▲':a.d==='dn'?'▼':'—'} ${a.m}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Language Detection Tells</div>
+      ${s.tells.map(t=>`<div class="tell-item"><span class="tell-bullet">→</span>${t}</div>`).join('')}
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Reversal Signal</div>
+      <p class="modal-text" style="color:#1a9e5c;font-weight:600;">${s.reversal}</p>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Historical Events</div>
+      ${s.events.map(e=>`<div class="hist-event"><span class="tell-bullet">·</span>${e}</div>`).join('')}
+    </div>
+    <div class="modal-section">
+      <div class="modal-stat-row">
+        <div class="modal-stat-card">
+          <div class="modal-stat-val">${s.hit}%</div>
+          <div class="modal-stat-label">Historical Hit Rate</div>
+        </div>
+        <div class="modal-stat-card">
+          <div class="modal-stat-val">${s.repeat}%</div>
+          <div class="modal-stat-label">Repeatability Score</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Average Move · Lead Time</div>
+      <p class="modal-text"><strong>${s.avgMove}</strong></p>
+      <p class="modal-text" style="color:#9098a8;margin-top:4px;">Lead time: ${s.lead}</p>
+    </div>`;
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-bg'))
+    document.getElementById('modal-bg').classList.remove('open');
+}
+
+// ════════════════════════════════════════
+// LIVE DATA ENGINE
+// ════════════════════════════════════════
+
+let liveData = {};
+let fetchInterval = null;
+let isLiveMode = false;
+let lastFetchTime = null;
+let isFetching = false;
+
+// Finnhub symbol map — dashboard ticker → API symbol
+const FINNHUB_MAP = {
+  WTI:   'OANDA:WTICO_USD',
+  BRENT: 'OANDA:BCO_USD',
+  SPY:   'SPY',
+  QQQ:   'QQQ',
+  DJI:   '^DJI',
+  VIX:   '^VIX',
+  UVXY:  'UVXY',
+  VXX:   'VXX',
+  LMT:   'LMT',
+  RTX:   'RTX',
+  NOC:   'NOC',
+  DAL:   'DAL',
+  UAL:   'UAL',
+  AAL:   'AAL',
+  AAPL:  'AAPL',
+  NVDA:  'NVDA',
+  TSLA:  'TSLA',
+  GLD:   'GLD',
+  NUE:   'NUE',
+  NVO:   'NVO',
+  XLV:   'XLV',
+  SOXX:  'SOXX',
+  ITA:   'ITA',
+  DXY:   'OANDA:USD_USDOLLAR',
+};
+
+// ── Helpers ──────────────────────────────
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function isMarketOpen() {
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = et.getDay();
+  const t = et.getHours() * 100 + et.getMinutes();
+  return day >= 1 && day <= 5 && t >= 930 && t < 1600;
+}
+
+function fmtPrice(ticker, price) {
+  if (price == null || isNaN(price)) return '—';
+  if (ticker === 'BTC') return '$' + Math.round(price).toLocaleString('en-US');
+  if (ticker === 'DJI') return Math.round(price).toLocaleString('en-US');
+  if (['VIX','DXY'].includes(ticker)) return price.toFixed(2);
+  if (['WTI','BRENT'].includes(ticker)) return '$' + price.toFixed(2);
+  return '$' + price.toFixed(2);
+}
+
+function fmtPct(pct) {
+  if (pct == null || isNaN(pct)) return '—';
+  return (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+}
+
+// ── Fetch functions ───────────────────────
+
+async function fetchFinnhub(symbol) {
+  const url = `/api/prices?symbol=${encodeURIComponent(symbol)}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`${resp.status}`);
+  const d = await resp.json();
+  if (!d || d.c == null || d.c === 0) throw new Error('No data');
+  return d;
+}
+
+async function fetchBTC() {
+  const url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true';
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`${resp.status}`);
+  const d = await resp.json();
+  const price = d.bitcoin.usd;
+  const pct = d.bitcoin.usd_24h_change || 0;
+  return { c: price, dp: pct, d: price * (pct / 100), pc: price / (1 + pct / 100) };
+}
+
+// ── Main fetch cycle ──────────────────────
+
+async function fetchAllPrices() {
+  if (isFetching) return;
+  isFetching = true;
+
+  let hits = 0;
+
+  // Fetch Finnhub symbols (staggered 180ms apart)
+  const tickers = Object.keys(FINNHUB_MAP);
+  for (let i = 0; i < tickers.length; i++) {
+    const tk = tickers[i];
+    try {
+      const q = await fetchFinnhub(FINNHUB_MAP[tk]);
+      liveData[tk] = { price: q.c, pct: q.dp, change: q.d, prev: q.pc, live: true };
+      hits++;
+    } catch (e) {
+      // Keep previous data silently
+    }
+    if (i < tickers.length - 1) await sleep(180);
+  }
+
+  // Fetch BTC from CoinGecko
+  try {
+    const btc = await fetchBTC();
+    liveData['BTC'] = { price: btc.c, pct: btc.dp, change: btc.d, prev: btc.pc, live: true };
+    hits++;
+  } catch (e) {
+    // Keep previous
+  }
+
+  if (hits > 3) {
+    isLiveMode = true;
+    lastFetchTime = new Date();
+  }
+
+  isFetching = false;
+  updateModeBar();
+  renderAssetsLive();
+  renderTickerLive();
+  updateVIXLive();
+}
+
+// Always fetch BTC even without a Finnhub key
+async function fetchBTCOnly() {
+  try {
+    const btc = await fetchBTC();
+    liveData['BTC'] = { price: btc.c, pct: btc.dp, change: btc.d, prev: btc.pc, live: true };
+    renderAssetsLive();
+    renderTickerLive();
+  } catch(e) {}
+}
+
+// ── Mode bar ──────────────────────────────
+
+function updateModeBar() {
+  const badge = document.getElementById('data-mode-badge');
+  const update = document.getElementById('last-update');
+  const market = document.getElementById('market-status');
+
+  if (isLiveMode) {
+    badge.textContent = '● LIVE';
+    badge.classList.add('live');
+    update.textContent = 'Updated ' + (lastFetchTime ? lastFetchTime.toLocaleTimeString() : '—');
+  }
+
+  const open = isMarketOpen();
+  market.textContent = open ? '● Market Open' : '○ Market Closed';
+  market.style.color = open ? 'var(--up)' : 'var(--text-muted)';
+}
+
+// ── Live render functions ─────────────────
+
+function renderAssetsLive() {
+  const groups = [...new Set(ASSETS.map(a => a.group))];
+  document.getElementById('asset-groups').innerHTML = groups.map(g => {
+    const rows = ASSETS.filter(a => a.group === g).map(a => {
+      const ld = liveData[a.ticker];
+      const price = ld ? fmtPrice(a.ticker, ld.price) : a.price;
+      const pct   = ld ? ld.pct : parseFloat(a.chg);
+      const chg   = ld ? fmtPct(ld.pct) : a.chg;
+      const col   = pct >= 0 ? 'var(--up)' : 'var(--down)';
+      const liveDot = ld ? `<span style="width:6px;height:6px;border-radius:50%;background:var(--up);display:inline-block;margin-right:4px;opacity:0.7;flex-shrink:0;"></span>` : '';
+      return `<div class="asset-row">
+        <span class="asset-ticker">${a.ticker}</span>
+        <span class="asset-name">${liveDot}${a.name}</span>
+        <span class="asset-price">${price}</span>
+        <span class="asset-chg" style="color:${col}">${chg}</span>
+        ${a.sig
+          ? `<span class="asset-sig-pill ${a.sig_t==='trade'?'sig-trade':a.sig_t==='watch'?'sig-watch':'sig-alert'}">${a.sig}</span>`
+          : `<span style="width:52px;margin-left:8px;display:inline-block;flex-shrink:0;"></span>`}
+      </div>`;
+    }).join('');
+    return `<div class="asset-group-label">${g}</div>${rows}`;
+  }).join('');
+}
+
+function renderTickerLive() {
+  const items = ASSETS.slice(0, 14).map(a => {
+    const ld = liveData[a.ticker];
+    const price = ld ? fmtPrice(a.ticker, ld.price) : a.price;
+    const pct   = ld ? ld.pct : parseFloat(a.chg);
+    const chg   = ld ? fmtPct(ld.pct) : a.chg;
+    const dir   = pct >= 0 ? 'up' : 'dn';
+    return `<span class="tick-item">${a.ticker} <span class="${dir}">${price} ${chg}</span></span>`;
+  }).join('');
+  const track = document.getElementById('ticker');
+  track.innerHTML = items + items;
+}
+
+function updateVIXLive() {
+  const ld = liveData['VIX'];
+  if (!ld || !ld.price) return;
+  const vix = ld.price;
+  const r = getVIXRegime(vix);
+  document.getElementById('vix-num').textContent = vix.toFixed(1);
+  document.getElementById('vix-num').style.color = r.color;
+  document.getElementById('vix-badge').textContent = 'VIX ' + vix.toFixed(1);
+  document.getElementById('vix-regime').textContent = r.label;
+  document.getElementById('vix-regime').style.color = r.color;
+  document.getElementById('vix-regime-desc').textContent = r.desc;
+  const segs = ['#1a9e5c','#8bc34a','#e07b00','#e05535','#e03535'];
+  const cur = vix < 15 ? 0 : vix < 20 ? 1 : vix < 30 ? 2 : vix < 40 ? 3 : 4;
+  document.getElementById('vix-scale-bar').innerHTML = segs.map((c,i) =>
+    `<div class="vix-seg" style="background:${c};opacity:${i===cur?1:0.25};flex:20"></div>`
+  ).join('');
+  document.getElementById('vix-grid').innerHTML = r.insts.map(inst => `
+    <div class="vix-inst-card ${inst.rec?'rec':''}">
+      <div class="vix-inst-ticker">${inst.t}${inst.rec?' ★':''}</div>
+      <div class="vix-inst-desc">${inst.d}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// CLOCK + MARKET STATUS UPDATER
+// ════════════════════════════════════════
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toUTCString().split(' ')[4] + ' UTC';
+}
+
+function updateMarketStatus() {
+  const market = document.getElementById('market-status');
+  const open = isMarketOpen();
+  market.textContent = open ? '● Market Open' : '○ Market Closed';
+  market.style.color = open ? 'var(--up)' : 'var(--text-muted)';
+}
+
+function flicker() {
+  const rows = document.querySelectorAll('.asset-price');
+  if (rows.length && isLiveMode) {
+    const r = rows[Math.floor(Math.random() * rows.length)];
+    r.style.opacity = '0.3';
+    setTimeout(() => { r.style.opacity = '1'; }, 180);
+  }
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+renderFeed();
+renderAnalysis();
+renderTrades();
+renderAssets();
+renderVIX();
+renderLibrary();
+renderTicker();
+updateClock();
+updateMarketStatus();
+
+// Always fetch BTC live immediately — no key needed
+fetchBTCOnly();
+
+// Auto-start all prices via server-side proxy — no key needed in browser
+fetchAllPrices();
+fetchInterval = setInterval(fetchAllPrices, 30000);
+
+// Set AI badge to ready state
+const aiBadge = document.getElementById('ai-mode-badge');
+if (aiBadge) {
+  aiBadge.textContent = '● AI Ready';
+  aiBadge.style.background = 'var(--up-bg)';
+  aiBadge.style.color = 'var(--up)';
+  aiBadge.style.borderColor = '#a8dfc2';
+}
+
+setInterval(updateClock, 1000);
+setInterval(updateMarketStatus, 60000);
+setInterval(flicker, 3000);
+
+// Refresh BTC every 60 seconds even in demo mode
+setInterval(fetchBTCOnly, 60000);
+
+// ════════════════════════════════════════
+// CLAUDE API ENGINE — PHASE 2
+// ════════════════════════════════════════
+
+let anthropicKey = '';
+let aiEnabled = false;
+
+  const badge = document.getElementById('ai-mode-badge');
+  if (badge) {
+    badge.textContent = '● AI Ready';
+    badge.style.background = 'var(--up-bg)';
+    badge.style.color = 'var(--up)';
+    badge.style.borderColor = '#a8dfc2';
+  }
+
+// Build the system prompt with full signal library context
+function buildSystemPrompt() {
+  const signalSummary = SIGNALS.map(s =>
+    `${s.id} — ${s.name} (${s.cat}):
+Description: ${s.desc}
+Key language tells: ${s.tells.join(' | ')}
+Reversal signal: ${s.reversal}
+Historical hit rate: ${s.hit}% | Repeatability: ${s.repeat}%
+Assets affected: ${s.assets.map(a=> a.n + ' ' + (a.d==='up'?'▲':'▼') + ' ' + a.m).join(', ')}`
+  ).join('\n\n');
+
+  return `You are a specialist political market signal analyst with deep expertise in how Trump and Musk statements move financial markets. You have a verified signal library built from documented historical market-moving events.
+
+CRITICAL CONTEXT — MOST IMPORTANT SIGNALS TO KNOW:
+
+S002b — Tariff Pause/Deal: The phrase "THIS IS A GREAT TIME TO BUY!!!" is the single highest-confidence signal in the entire library. On April 9 2025 this exact phrase preceded the third largest single-day S&P gain since World War II (+9.52%). Any post containing affirmative caps, deal language, tariff pause, or "great call with great leader" should score 90+.
+
+S002 — Tariff Escalation: Specific tariff percentages, "Liberation Day" language, country-specific duties = score 85+. Broad market short signal.
+
+S001 — Iran/Military Escalation: Military strike confirmations, "Operation" names, Iran threats = score 88+. Oil long, defence long, airline short.
+
+S003 — Musk/Trump feud: "CRAZY" keyword about Musk, EV mandate threats, contract termination threats = score 85+. Tesla short.
+
+S004 — Fed/Powell attack: "termination cannot come fast enough", "major loser" about Powell = score 80+. Dollar short, gold long.
+
+S007 — China rare earth threat: "HOSTILE", "massive increase" tariffs on China, rare earth controls = score 84+. Broad market short.
+
+IMPORTANT SCORING RULES:
+- Personal political attacks on individuals (prosecutors, political opponents, media) with NO market or policy implications = score below 25, direction neutral, signal S008
+- Routine political commentary with no specific policy threat = score below 35
+- Specific numerical tariff figures = always score above 75
+- "THIS IS A GREAT TIME TO BUY" or equivalent = always score 95+
+- Military action confirmations = always score above 85
+- The composite score reflects MARKET SIGNAL STRENGTH only, not rhetorical intensity
+
+FULL SIGNAL LIBRARY:
+${signalSummary}
+
+LANGUAGE ANALYSIS FRAMEWORK:
+Score each post across four dimensions (0-100):
+1. NICKNAME SENTIMENT (0=hostile attack name, 50=neutral, 100=superlative praise)
+2. CAPS INTENSITY (0=no caps, 100=all caps — higher = stronger emotional conviction)
+3. POST SPECIFICITY (0=vague, 100=specific numbers/names/dates/percentages)
+4. TIMING ANOMALY (0=normal hours, 100=late night/weekend/mid-session)
+
+WARMTH GRADIENT:
+Stage 1=Superlative praise (80-100), Stage 2=Neutral (60-79), Stage 3=Qualified criticism (35-59), Stage 4=Open hostility (15-34), Stage 5=De-escalation (0-14)
+
+CRITICAL JSON RULES — MUST FOLLOW:
+- Do NOT use apostrophes or contractions anywhere in your response. Write "do not" not "don't", "it is" not "it's", "trader is" not "trader's"
+- Do NOT use double quotes inside string values — use single quotes if you need to quote something
+- Keep rationale text to plain statements without any punctuation that could break JSON
+- Every string value must be properly closed with a double quote before the next comma or brace
+- Return ONLY the JSON object, nothing before or after it
+
+RESPONSE — Return ONLY valid JSON, no other text:
+{
+  "signalId": "S002b",
+  "signalName": "signal name",
+  "direction": "escalation|deescalation|neutral",
+  "compositeScore": 97,
+  "dims": {
+    "nickname": 60,
+    "caps": 95,
+    "specificity": 85,
+    "timing": 90,
+    "warmth": 80
+  },
+  "warmthStage": 5,
+  "counterparty": "China|Iran|Fed|Musk|Market|Other",
+  "directionLabel": "▼ De-escalation Signal",
+  "summary": "2-3 sentence plain English explanation of what this post signals and why it matters for markets",
+  "trades": [
+    {
+      "type": "long|short|vol|watch",
+      "instrument": "Instrument name e.g. QQQ / Nasdaq ETF",
+      "confidence": 97,
+      "rationale": "Detailed plain English explanation minimum 4 sentences. Reference the specific language tells detected, the historical precedent, what assets to trade and why, and what the exit signal looks like.",
+      "entry": "Entry description",
+      "target": "Target description",
+      "stop": "Stop/exit trigger description"
+    }
+  ],
+  "languageRows": [
+    {"name": "Escalation Keywords", "val": 15, "col": "#1a9e5c"},
+    {"name": "Warmth Gradient", "val": 80, "col": "#1a9e5c"},
+    {"name": "Timing Score", "val": 90, "col": "#e07b00"},
+    {"name": "Specificity Score", "val": 85, "col": "#1565c0"},
+    {"name": "Composite Signal", "val": 97, "col": "#1a9e5c"}
+  ]
+}`;
+}
+
+async function analysePost() {
+  const text = document.getElementById('post-input').value.trim();
+  if (!text) return;
+
+  // Show spinner
+  document.getElementById('analyse-spinner').style.display = 'flex';
+  document.getElementById('analyse-btn').disabled = true;
+  document.getElementById('analyse-status').textContent = 'Sending to Claude…';
+
+  const actor = document.getElementById('post-actor').value;
+  const source = document.getElementById('post-source').value;
+  const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  const userMessage = `Analyse this statement:
+
+ACTOR: ${actor}
+SOURCE: ${source}
+TIME: ${time}
+TEXT: "${text}"
+
+Apply the full signal library and language analysis framework. Return only the JSON response.`;
+
+  try {
+    document.getElementById('analyse-status').textContent = 'Claude is reading the post…';
+
+    const response = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        system: buildSystemPrompt(),
+        messages: [{ role: 'user', content: userMessage }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
+    }
+
+    document.getElementById('analyse-status').textContent = 'Processing results…';
+
+    const data = await response.json();
+    const rawText = data.content.map(c => c.text || '').join('');
+
+    // Parse JSON — robust cleaning
+    let clean = rawText
+      .replace(/```json|```/g, '')
+      .trim();
+
+    // Extract just the JSON object
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found in response');
+    clean = jsonMatch[0];
+
+    // Fix unescaped apostrophes inside JSON string values
+    // Replace apostrophes that are inside strings (not at string boundaries)
+    clean = clean.replace(
+      /"((?:[^"\\]|\\.)*)"/g,
+      (match, inner) => '"' + inner.replace(/'/g, '\u2019') + '"'
+    );
+
+    let result;
+    try {
+      result = JSON.parse(clean);
+    } catch(parseErr) {
+      // Last resort — try to salvage by removing problematic characters
+      clean = clean.replace(/[\u0000-\u001F]/g, ' ');
+      result = JSON.parse(clean);
+    }
+
+    // Hide spinner
+    document.getElementById('analyse-spinner').style.display = 'none';
+    document.getElementById('analyse-btn').disabled = false;
+
+    // Apply results to dashboard
+    applyAnalysisResult(result, text, actor, source, time);
+
+    document.getElementById('ai-status-badge').textContent =
+      `Last analysed: ${time} — ${result.signalName}`;
+
+  } catch (err) {
+    document.getElementById('analyse-spinner').style.display = 'none';
+    document.getElementById('analyse-btn').disabled = false;
+    document.getElementById('ai-status-badge').textContent = '⚠ Error: ' + err.message;
+    console.error('Analysis error:', err);
+  }
+}
+
+function applyAnalysisResult(r, text, actor, source, time) {
+  // 1. Update the active signal reference
+  document.getElementById('analysis-ref').textContent = 'Signal ' + r.signalId;
+
+  // 2. Update composite score
+  const col = r.direction === 'escalation' ? '#1565c0'
+             : r.direction === 'deescalation' ? '#1a9e5c' : '#e07b00';
+  document.getElementById('comp-num').textContent = r.compositeScore;
+  document.getElementById('comp-num').style.color = col;
+  document.getElementById('comp-dir').textContent = r.directionLabel;
+  document.getElementById('comp-dir').style.color = col;
+  document.getElementById('comp-desc').textContent = r.summary;
+
+  // 3. Update score cells
+  const dims = r.dims;
+  const cells = [
+    { label:'Nickname Sentiment', val:dims.nickname,
+      col: dims.nickname < 30 ? '#e03535' : dims.nickname > 70 ? '#1a9e5c' : '#e07b00' },
+    { label:'Caps Intensity',     val:dims.caps,
+      col: dims.caps > 70 ? '#e03535' : '#e07b00' },
+    { label:'Post Specificity',   val:dims.specificity,
+      col: '#1565c0' },
+    { label:'Timing Anomaly',     val:dims.timing,
+      col: dims.timing > 75 ? '#e03535' : '#e07b00' },
+  ];
+  document.getElementById('score-grid').innerHTML = cells.map(c => `
+    <div class="score-cell">
+      <div class="score-cell-label">${c.label}</div>
+      <div class="score-cell-val" style="color:${c.col}">${c.val}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${c.val}%;background:${c.col}"></div></div>
+    </div>`).join('');
+
+  // 4. Update warmth gradient
+  const stageNames = ['Superlative Praise','Neutral Reference','Qualified Criticism','Open Hostility','De-escalation'];
+  const stageCols  = [' active-up',' active-up',' active-warn',' active-stage',' active-up'];
+  const stg = Math.min(Math.max(r.warmthStage - 1, 0), 4);
+  document.getElementById('warmth-stages').innerHTML = stageNames.map((s,i) =>
+    `<div class="warmth-stage${i===stg?stageCols[i]:''}">${s}</div>`
+  ).join('');
+
+  const WARMTH_LABELS = [
+    'Stage 1 — Superlative praise. Cooperative announcement likely. Consider de-escalation trade.',
+    'Stage 2 — Neutral reference. Warning: warmth fading. Monitor for Stage 3 within 48 hours.',
+    'Stage 3 — Qualified criticism. Pre-escalation warning. Begin volatility accumulation.',
+    'Stage 4 — Open hostility. Escalation trade window confirmed. Primary signal active.',
+    'Stage 5 — De-escalation language. Reversal trade window open. Watch for formal announcement.',
+  ];
+  document.getElementById('warmth-desc').textContent = WARMTH_LABELS[stg];
+
+  // 5. Update language rows
+  document.getElementById('lang-rows').innerHTML = r.languageRows.map(l => `
+    <div class="lang-row">
+      <span class="lang-name">${l.name}</span>
+      <div class="lang-bar-wrap"><div class="bar-track">
+        <div class="bar-fill" style="width:${l.val}%;background:${l.col}"></div>
+      </div></div>
+      <span class="lang-val" style="color:${l.col}">${l.val}</span>
+    </div>`).join('');
+
+  // 6. Update trade recommendations
+  const badgeMap  = { long:'badge-long', short:'badge-short', vol:'badge-vol', watch:'badge-watch' };
+  const labelMap  = { long:'Long', short:'Short', vol:'Volatility', watch:'Monitor' };
+  const confCol   = c => c >= 85 ? '#1a9e5c' : c >= 70 ? '#e07b00' : '#9098a8';
+  document.getElementById('trade-cards').innerHTML = r.trades.map(t => `
+    <div class="trade-card">
+      <div class="trade-card-head">
+        <div>
+          <span class="trade-type-badge ${badgeMap[t.type]}">${labelMap[t.type]}</span>
+          <div class="trade-instrument">${t.instrument}</div>
+        </div>
+        <div class="trade-conf-wrap">
+          <div class="trade-conf-num" style="color:${confCol(t.confidence)}">${t.confidence}%</div>
+          <div class="trade-conf-label">Confidence</div>
+        </div>
+      </div>
+      <div class="trade-rationale">${t.rationale}</div>
+      <div class="trade-targets">
+        <div class="trade-target">
+          <div class="trade-target-label">Entry</div>
+          <div class="trade-target-val" style="color:#e07b00">${t.entry}</div>
+        </div>
+        <div class="trade-target">
+          <div class="trade-target-label">Target</div>
+          <div class="trade-target-val" style="color:#1a9e5c">${t.target}</div>
+        </div>
+        <div class="trade-target">
+          <div class="trade-target-label">Stop / Exit</div>
+          <div class="trade-target-val" style="color:#e03535">${t.stop}</div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // 7. Add post to the feed
+  const newItem = {
+    id: 'LIVE-' + Date.now(),
+    src: source, actor, time,
+    dir: r.direction,
+    ref: r.signalId,
+    score: r.compositeScore,
+    text: `"${text}"`,
+    tags: [r.signalName, r.counterparty, r.directionLabel.replace('▲ ','').replace('▼ ','')],
+    dims: r.dims,
+  };
+  FEED_ITEMS.unshift(newItem);
+  renderFeed();
+  selectFeed(newItem.id);
+
+  // Scroll feed to top
+  document.getElementById('feed-list').scrollTop = 0;
+}
+
+// ── Finnhub key Enter handler removed — prices now load automatically
+
+
+</script>
+</body>
+</html>
